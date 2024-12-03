@@ -2,7 +2,7 @@
 
 
 ## Overview
-These instructions will guide you to create two file server with a load balancer distributing traffic to them.
+These instructions will guide you to create two file server with a load balancer distributing traffic to them. along with a firewall on each droplet controlling which type of traffic is allowed while nginx runs the servers.
 
 
 # Requirements:
@@ -230,7 +230,183 @@ sudo mv ~/generate-index.* /etc/systemd/system
 
 reminder `sudo systemctl daemon-reload`
 
-# `nginx` and `ufw`
+# 4. `nginx` and `ufw`
+
+we will be using `nginx` as our file server and `ufw` as our firewall.
+
+before we do anything we need to install `nginx` and `ufw`:
+
+```bash
+sudo pacman -S nginx ufw
+```
+
+## nginx
+the main configuration for nginx is at `/etc/nginx/nginx.conf`
+
+we need to make nginx run under `webgen` and we also need to make a separate server block which will hold our file server
+
+to make nginx run under webgen we can edit `/etc/nginx/nginx.conf`
+
+```bash
+sudo nvim /etc/nginx/nginx.conf
+```
+
+once in this file we need to uncomment the top line and add `webgen` there like so:
+
+```bash
+user webgen;
+worker_processes  1;
+
+#error_log  logs/error.log;
+#error_log  logs/error.log  notice;
+#error_log  logs/error.log  info;
+
+#pid        logs/nginx.pid;
+```
+
+once this is changed you can save and quit.
+
+it is better to use server blocks in separate directory instead of making changes inside our main nginx configuration file as its easier to trouble shoot, keeps it organized and easier to maintain.
+
+I am going to be using the `sites-enabled` and `sites-available` approach.
+
+we need to make two directories:
+
+```bash
+sudo mkdir /etc/nginx/sites-available
+```
+
+```bash
+sudo mkdir /etc/nginx/sites-enabled
+```
+
+now we need to add our server block inside `sites-available`
+```bash
+sudo nvim /etc/nginx/sites-available/example.conf
+```
+
+the server block should look like this:
+```bash
+server {
+	listen 80;
+	listen [::]:80;
+
+	server_name 159.223.194.99;
+
+	root /var/lib/webgen/HTML;
+	index index.html;
+
+	location / {
+	try_files $uri $uri/ =404;
+	}
+
+	location /documents {
+        root /var/lib/webgen;
+        autoindex on;                # Enables the directory listing
+        autoindex_exact_size off;    # Shows file sizes, human-readable
+        autoindex_localtime on;      # Displays file timestamps
+    }
+
+}
+```
+save and quit
+
+This is what the seperate server block looks for this nginx server, The important components of this include:
+
+1. listen 80 : which is the port
+2. `listen [::]:80;` indicates ipv6 and the port for http which is 80
+3. `root /var/lib/webgen/HTML;` the place being searched for the file specified in the next line `index index.html`
+4. `location /` what happens when the user requests the project root
+5. the rest is just error checking
+## explain more
 
 
+now that we have created our server block we need to go back to the original nginx configuration file and append it in there.
 
+```bash
+sudo nvim /etc/nginx/nginx.conf
+```
+
+go to the http block and append include sites-enabled/*; to it
+
+```bash
+http {
+    include       mime.types;
+    include sites-enabled/*;
+```
+
+once this is done save and quit and we can enable the site by creating the symbolic link 
+
+```bash
+sudo ln -s /etc/nginx/sites-available/example.conf /etc/nginx/sites-enabled/example.conf
+```
+
+to test the configuration of our nginx file and to check the files referenced inside it we can run:
+
+```bash
+sudo nginx -t
+```
+
+if instructions were followed properly you should see something like this:
+
+```bash
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+```
+
+## ufw
+now we are going to configure and set up the `ufw` firewall we need to allow ssh connections, http connections, and set a connection limit
+
+`ufw` consists of two part, the service and the firewall itself. Its important to know the difference because if you start the firewall without letting in ssh connections your gonna lose access to your droplet
+
+we want to set the firewall service to start from boot and to start right now we can do that with the command:
+
+```bash
+sudo systemctl enable --now ufw.service
+```
+
+to check the status of your firewall you can run:
+
+```bash
+sudo ufw status verbose
+```
+
+now once our firewall service has been enabled we can allow in certain connections:
+
+```bash
+sudo ufw allow SSH
+```
+
+```bash
+sudo ufw allow http
+```
+
+```bash
+sudo ufw limit ssh
+```
+
+Once all of these are executed we can now start the firewall itself.
+
+```bash
+sudo ufw enable
+```
+
+this should enable the firewall and we can check the status now by running the command previously mentioned:
+
+```bash
+sudo ufw status verbose
+```
+
+we should see something like this:
+![firewall](./views/firewall.png)
+
+congrats your nginx server and firewall should be up and running
+
+# 5.  wrap up
+
+
+# References:
+https://www.digitalocean.com/community/tutorials/understanding-nginx-server-and-location-block-selection-algorithms
+https://www.digitalocean.com/community/tutorials/understanding-systemd-units-and-unit-files
+https://wiki.archlinux.org/title/Systemd/Timers
+https://man.archlinux.org/man/systemd-analyze.1
