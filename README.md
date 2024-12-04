@@ -50,6 +50,7 @@ once the repository has been successfully cloned to your home directory we can p
 we are creating a system user to be the owner of the file server for the following reasons:
 1. security
 2. assigned system resources
+
 like the name suggests a `system-user`  are Linux users that are made for running system tasks and services. They also increase security as allocating something to a system user can indicate that other cant get to it, system users have no login shell and no password. This prevents user from being able to access them.
 
 To create a system user run the following commands:
