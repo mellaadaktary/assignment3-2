@@ -302,23 +302,26 @@ server {
 
 	location /documents {
         root /var/lib/webgen;
-        autoindex on;                # Enables the directory listing
-        autoindex_exact_size off;    # Shows file sizes, human-readable
-        autoindex_localtime on;      # Displays file timestamps
+        autoindex on;                
+        autoindex_exact_size off;    
+        autoindex_localtime on;      
     }
 
 }
 ```
 save and quit
 
-This is what the seperate server block looks for this nginx server, The important components of this include:
+This is what the separate server block looks for this nginx server, The important components of this include:
 
 1. listen 80 : which is the port
 2. `listen [::]:80;` indicates ipv6 and the port for http which is 80
 3. `root /var/lib/webgen/HTML;` the place being searched for the file specified in the next line `index index.html`
 4. `location /` what happens when the user requests the project root
 5. the rest is just error checking
-## explain more
+6. `location /documents` : this part will be appended to the path at root and this will be the full path that gets searched for the files for example the full path here would be `/var/lib/webgen/documents`
+7. `autoindex` enables directory listing
+8. `autoindex_exact_size` is for human readable file sizes
+9. `autoindex_localtime` is for showing file timestamps
 
 
 now that we have created our server block we need to go back to the original nginx configuration file and append it in there.
@@ -404,6 +407,29 @@ congrats your nginx server and firewall should be up and running
 
 # 5.  wrap up
 
+once all of these steps have been completed, then we can make our way to the browser and check if everything is working
+
+lets check that the load balancer works:
+![firewall](./views/completed.png)
+now that we know the IP addresses of the everything lets type the ip address of the load balancer into the browser
+
+![firewall](./views/loaded1.png)
+
+The load balancer puts us into this server now lets refresh and it should take us into the other one
+
+![firewall](./views/loaded2.png)
+
+as you can see it takes us to both the server now lets check the `/documents`, you would need to refresh just like this one so we get redirected.
+
+pay attention to the date edited
+
+![firewall](./views/documents1.png)
+
+![firewall](./views/documents2.png)
+
+as you can see everything works properly.
+
+# 😁😁
 
 # References:
 https://www.digitalocean.com/community/tutorials/understanding-nginx-server-and-location-block-selection-algorithms
